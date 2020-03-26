@@ -58,6 +58,15 @@ private:
   /// Input MDEventWorkspace
   Mantid::API::IMDEventWorkspace_sptr inWS;
 
+  // get matrix to transform from Qlab to plane perp to Q
+  void getPinv(const Mantid::Kernel::V3D &q,
+               Mantid::Kernel::Matrix<double> &Pinv);
+
+  // calculate eigenvectors and eigenvalues
+  void getEigenVectors(const Mantid::Kernel::Matrix<double> &cov_matrix,
+                       std::vector<Mantid::Kernel::V3D> &eigen_vectors,
+                       std::vector<double> &eigen_values);
+
   /// Calculate if this Q is on a detector
   void calculateE1(const Geometry::DetectorInfo &detectorInfo);
   double detectorQ(Mantid::Kernel::V3D QLabFrame, double r);

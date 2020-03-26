@@ -38,8 +38,12 @@ DECLARE_VECTOR_PARAMETER(DimensionsUsedVectorParam, bool)
  */
 class DLLExport CoordTransformDistance : public Mantid::API::CoordTransform {
 public:
-  CoordTransformDistance(const size_t inD, const coord_t *center,
-                         const bool *dimensionsUsed, const size_t outD = 1);
+  CoordTransformDistance(
+      const size_t inD, const coord_t *center, const bool *dimensionsUsed,
+      const size_t outD = 1,
+      const std::vector<Kernel::V3D> directions = std::vector<V3D>(0, V3D()),
+      const std::vector<double> abcRadii = std::vector<double>(0,0.0));
+
   CoordTransform *clone() const override;
   ~CoordTransformDistance() override;
   std::string toXMLString() const override;
@@ -60,6 +64,12 @@ protected:
   /// Parmeter where True is set for those dimensions that are considered when
   /// calculating distance
   bool *m_dimensionsUsed;
+
+  // Eigenvectors and radii for nd ellipsoid
+  std::vector<Kernel::V3D> m_directions;
+  std::vector<double> m_radii;
+  double m_maxRadius;
+
 };
 
 } // namespace DataObjects

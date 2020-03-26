@@ -28,19 +28,29 @@ namespace DataObjects {
  *dimensions that are considered when
  *        calculating distance.
  * @param outD :: # of output dimensions
+ * @param directions :: eigenvectors of an ellipsoid (if used)
+ * @param abcRadii :: radii of ellipsoid along each eigenvector (if used)
  * @return
  */
-CoordTransformDistance::CoordTransformDistance(const size_t inD,
-                                               const coord_t *center,
-                                               const bool *dimensionsUsed,
-                                               const size_t outD)
+CoordTransformDistance::CoordTransformDistance(
+    const size_t inD, const coord_t *center, const bool *dimensionsUsed,
+    const size_t outD, const std::vector<Kernel::V3D> directions,
+    const std::vector<double> abcRadii)
     : CoordTransform(inD, outD) {
   // Create and copy the arrays.
   m_center = new coord_t[inD];
   m_dimensionsUsed = new bool[inD];
+  m_maxRadius = 0.0;
+
   for (size_t d = 0; d < inD; d++) {
     m_center[d] = center[d];
     m_dimensionsUsed[d] = dimensionsUsed[d];
+    if (inD == 3 & abcRadii.size() == 3 & directions.size() == 3) {
+      // coord transform for ellipsoid specified (only in 3D)
+      m_radii.push_back(abcRadii[d]);
+      m_directions.push_back(directions[d]);
+      m_maxRadius = std::max(m_maxRadius, abcRadii[d]);
+    }
   }
 }
 
@@ -58,6 +68,8 @@ CoordTransform *CoordTransformDistance::clone() const {
 CoordTransformDistance::~CoordTransformDistance() {
   delete[] m_center;
   delete[] m_dimensionsUsed;
+  delete[] & m_radii;
+  delete[] & m_directions;
 }
 
 //----------------------------------------------------------------------------------------------
@@ -74,10 +86,23 @@ void CoordTransformDistance::apply(const coord_t *inputVector,
                                    coord_t *outVector) const {
   if (outD == 1) {
     coord_t distanceSquared = 0;
-    for (size_t d = 0; d < inD; d++) {
-      if (m_dimensionsUsed[d]) {
-        coord_t dist = inputVector[d] - m_center[d];
-        distanceSquared += (dist * dist);
+    if (m_radii.size() == 3) {
+      // map 3D ellipsoid to sphere of radius m_maxRadius
+      // (inD == 3 see constructor)
+      // convert 3D coords to V3D for vector algebra
+      V3D inV3D = V3D(inputVector[0], inputVector[1], inputVector[2]) -
+                  V3D(m_center[0], m_center[1], m_center[2]);
+      for (size_t d = 0; d < inD; d++) {
+        coord_t dist = m_directions[d].scalar_prod(inV3D) / m_radii[d];
+        distanceSquared += (dist * dist) * m_maxRadius;
+      }
+    } else {
+      // nd spherical transform
+      for (size_t d = 0; d < inD; d++) {
+        if (m_dimensionsUsed[d]) {
+          coord_t dist = inputVector[d] - m_center[d];
+          distanceSquared += (dist * dist);
+        }
       }
     }
     /// Return the only output dimension
